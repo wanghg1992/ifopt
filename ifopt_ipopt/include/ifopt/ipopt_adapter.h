@@ -33,12 +33,16 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <ifopt/problem.h>
 
-namespace ifopt {
+/**
+ * @brief namespace defined by the Ipopt solver.
+ *
+ * Sine this adapter wraps all of the Ipopt functions, we define the adapter
+ * in this namespace as well.
+ */
+namespace Ipopt {
 
 /**
  * @brief Solves the optimization problem using the IPOPT solver.
- *
- * @ingroup solvers
  *
  * Given an optimization Problem with variables, costs and constraints, this
  * class wraps it and makes it conform with the interface defined by IPOPT
@@ -47,38 +51,12 @@ namespace ifopt {
  * This implements the Adapter pattern. This class should not add any
  * functionality, but merely delegate it to the Adaptee (the Problem object).
  */
-class IpoptAdapter : public Ipopt::TNLP {
+class IpoptAdapter : public TNLP {
 public:
-  using Index    = Ipopt::Index;
+  using Problem  = ifopt::Problem;
   using VectorXd = Problem::VectorXd;
   using Jacobian = Problem::Jacobian;
 
-  /** @brief  Creates an IpoptAdapter and solves the NLP.
-    * @param [in/out]  nlp  The specific problem.
-    *
-    * This function creates the actual solver, sets the solver specific
-    * options (see SetOptions()) and passes the IpoptAdapter problem to it
-    * to be modified.
-    */
-  static void Solve(Problem& nlp);
-
-private:
-  /**
-   * @brief  Defines settings for the Ipopt solver @a app.
-   * @param app  The actual Ipopt solver.
-   *
-   * These settings include which QP solver to use, if gradients should
-   * be approximated or the provided analytical ones used, when the iterations
-   * should be terminated,...
-   *
-   * A complete list of options can be found at:
-   * https://www.coin-or.org/Ipopt/documentation/node40.html
-   */
-  static void SetOptions(Ipopt::SmartPtr<Ipopt::IpoptApplication> app);
-
-  Problem* nlp_; ///< The solver independent problem definition
-
-private:
   /**
    * @brief  Creates an IpoptAdapter wrapping the @a nlp.
    * @param  nlp  The specific nonlinear programming problem.
@@ -87,6 +65,9 @@ private:
    */
   IpoptAdapter(Problem& nlp);
   virtual ~IpoptAdapter() = default;
+
+private:
+  Problem* nlp_; ///< The solver independent problem definition
 
   /** Method to return some info about the nlp */
   virtual bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
@@ -121,26 +102,26 @@ private:
 
   /** This is called after every iteration and is used to save intermediate
     *  solutions in the nlp */
-  virtual bool intermediate_callback(Ipopt::AlgorithmMode mode,
+  virtual bool intermediate_callback(AlgorithmMode mode,
                                      Index iter, double obj_value,
                                      double inf_pr, double inf_du,
                                      double mu, double d_norm,
                                      double regularization_size,
                                      double alpha_du, double alpha_pr,
                                      Index ls_trials,
-                                     const Ipopt::IpoptData* ip_data,
-                                     Ipopt::IpoptCalculatedQuantities* ip_cq);
+                                     const IpoptData* ip_data,
+                                     IpoptCalculatedQuantities* ip_cq);
 
   /** This method is called when the algorithm is complete so the TNLP can
     * store/write the solution */
-  virtual void finalize_solution(Ipopt::SolverReturn status,
+  virtual void finalize_solution(SolverReturn status,
                                  Index n, const double* x, const double* z_L, const double* z_U,
                                  Index m, const double* g, const double* lambda,
                                  double obj_value,
-                                 const Ipopt::IpoptData* ip_data,
-                                 Ipopt::IpoptCalculatedQuantities* ip_cq);
+                                 const IpoptData* ip_data,
+                                 IpoptCalculatedQuantities* ip_cq);
 };
 
-} // namespace opt
+} // namespace Ipopt
 
 #endif /* IFOPT_INCLUDE_OPT_IPOPT_ADAPTER_H_ */

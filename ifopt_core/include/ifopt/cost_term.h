@@ -40,6 +40,7 @@ namespace ifopt {
  * This container builds a scalar cost term from the values of the variables.
  * This can be seen as a constraint with only one row and no bounds.
  *
+ * @ingroup ProblemFormulation
  * @sa Component
  */
 class CostTerm : public ConstraintSet {
@@ -57,16 +58,19 @@ public:
   /**
    * @brief  Wrapper function that converts double to Eigen::VectorXd.
    */
-  virtual VectorXd GetValues() const override final;
+  VectorXd GetValues() const final;
 
   /**
    * @brief  Returns infinite bounds (e.g. no bounds).
    */
-  virtual VecBound GetBounds() const override final;
+  VecBound GetBounds() const final;
+
+  /**
+   * Cost term printout slightly different from variables/constraints.
+   */
+  void Print (double tol, int& index) const final;
 };
 
 }
-
-
 
 #endif /* IFOPT_INCLUDE_IFOPT_COST_TERM_H_ */

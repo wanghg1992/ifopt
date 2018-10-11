@@ -1,4 +1,4 @@
-/******************************************************************************
+﻿/******************************************************************************
 Copyright (c) 2017, Alexander W Winkler. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ifopt/composite.h>
 
 #include <iostream>
+#include <iomanip>
 
 namespace ifopt {
 
@@ -55,6 +56,43 @@ std::string
 Component::GetName () const
 {
   return name_;
+}
+
+void Component::Print (double tol, int& index) const
+{
+  // calculate squared bound violation
+  VectorXd x = GetValues();
+  VecBound bounds = GetBounds();
+
+  std::vector<int> viol_idx;
+  for (uint i=0; i<bounds.size(); ++i) {
+    double lower = bounds.at(i).lower_;
+    double upper = bounds.at(i).upper_;
+    double val = x(i);
+    if (val < lower-tol || upper+tol < val)
+      viol_idx.push_back(i); // constraint out of bounds
+  }
+
+  std::string black = "\033[0m";
+  std::string red   = "\033[31m";
+  std::string color = viol_idx.empty()? black : red;
+
+  std::cout.precision(2);
+  std::cout << std::fixed
+            << std::left
+            << std::setw(30) << name_
+            << std::right
+            << std::setw(4) << num_rows_
+            << std::setw(9) << index
+            << std::setfill ('.')
+            << std::setw(7) << index+num_rows_-1
+            << std::setfill (' ')
+            << color
+            << std::setw(12) << viol_idx.size()
+            << black
+            << std::endl;
+
+  index += num_rows_;
 }
 
 Composite::Composite (const std::string& name, bool is_cost) :Component(0, name)
@@ -101,7 +139,6 @@ Composite::GetValues () const
 
   int row = 0;
   for (const auto& c : components_) {
-
     int n_rows = c->GetRows();
     VectorXd g = c->GetValues();
     g_all.middleRows(row, n_rows) += g;
@@ -117,7 +154,6 @@ Composite::SetVariables (const VectorXd& x)
 {
   int row = 0;
   for (auto& c : components_) {
-
     int n_rows = c->GetRows();
     c->SetVariables(x.middleRows(row,n_rows));
     row += n_rows;
@@ -131,17 +167,21 @@ Composite::GetJacobian () const
   Jacobian jacobian(GetRows(), n_var);
 
   int row = 0;
-  for (const auto& c : components_) {
+  std::vector< Eigen::Triplet<double> > triplet_list;
 
+  for (const auto& c : components_) {
     const Jacobian& jac = c->GetJacobian();
+    triplet_list.reserve(triplet_list.size()+jac.nonZeros());
+
     for (int k=0; k<jac.outerSize(); ++k)
       for (Jacobian::InnerIterator it(jac,k); it; ++it)
-        jacobian.coeffRef(row+it.row(), it.col()) += it.value();
+        triplet_list.push_back(Eigen::Triplet<double>(row+it.row(), it.col(), it.value()));
 
     if (!is_cost_)
       row += c->GetRows();
   }
 
+  jacobian.setFromTriplets(triplet_list.begin(), triplet_list.end());
   return jacobian;
 }
 
@@ -163,72 +203,18 @@ Composite::GetComponents () const
   return components_;
 }
 
-// some printouts for convenience
-static int print_counter = 0;
 void
-Composite::Print () const
+Composite::PrintAll () const
 {
-  print_counter = 0;
+  int index = 0;
+  double tol = 0.001; ///< tolerance when printing out constraint/bound violation.
 
   std::cout << GetName() << ":\n";
   for (auto c : components_) {
     std::cout << "   "; // indent components
-    c->Print();
+    c->Print(tol, index);
   }
   std::cout << std::endl;
-}
-
-void Component::Print () const
-{
-  int print_rows = 3;
-  std::string end_string = ", ...";
-
-  if (num_rows_ < print_rows) {
-    print_rows = num_rows_;
-    end_string.clear(); // all variables printed
-  }
-
-  // calculate squared bound violation
-  VectorXd x = GetValues();
-  VecBound bounds = GetBounds();
-
-  std::vector<int> viol_idx;
-  double eps = 0.001; // from ipopt config file
-  for (uint i=0; i<bounds.size(); ++i) {
-    double lower = bounds.at(i).lower_;
-    double upper = bounds.at(i).upper_;
-    double val = x(i);
-    if (val < lower-eps || upper+eps < val)
-      viol_idx.push_back(i); // constraint out of bounds
-  }
-
-
-  std::cout.precision(2);
-  std::cout << std::fixed;
-  // https://stackoverflow.com/questions/2616906/how-do-i-output-coloured-text-to-a-linux-terminal
-  std::string black = "\033[0m";
-  std::string red   = "\033[31m";
-  std::string color = viol_idx.empty()? black : red;
-  std::cout << name_ << "\t(";
-  std::cout << num_rows_ << ", " << print_counter << "-" << print_counter+num_rows_;
-  std::cout << ", " << color << "nr_violated=" << viol_idx.size() << " ( ";
-  uint i_print = 4;
-  int nr_indices_print = viol_idx.size()<i_print? viol_idx.size() : i_print;
-  for (int i=0; i<nr_indices_print; ++i)
-    std::cout << viol_idx.at(i) << ", ";
-  std::cout << ")";
-  std::cout << black;
-  std::cout << ":\t";
-
-  print_counter += num_rows_;
-
-  VectorXd val = GetValues().topRows(print_rows);
-  if (val.rows() > 0)
-    std::cout << val(0);
-  for (int i=1; i<val.rows(); ++i)
-    std::cout << ",\t" << val(i);
-
-  std::cout << end_string << std::endl;
 }
 
 } /* namespace opt */

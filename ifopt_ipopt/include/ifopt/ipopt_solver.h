@@ -24,35 +24,50 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
-#include <iostream>
+#ifndef IFOPT_SRC_IFOPT_IPOPT_INCLUDE_IFOPT_IPOPT_H_
+#define IFOPT_SRC_IFOPT_IPOPT_INCLUDE_IFOPT_IPOPT_H_
 
 #include <ifopt/problem.h>
-#include <ifopt/ipopt_solver.h>
-#include <ifopt/test_vars_constr_cost.h>
+#include <ifopt/solver.h>
 
-using namespace ifopt;
 
-int main()
-{
-  // 1. define the problem
-  Problem nlp;
-  nlp.AddVariableSet  (std::make_shared<ExVariables>());
-  nlp.AddConstraintSet(std::make_shared<ExConstraint>());
-  nlp.AddCostSet      (std::make_shared<ExCost>());
-  nlp.PrintCurrent();
-
-  // 2. choose solver and options
-  IpoptSolver ipopt;
-  ipopt.SetOption("linear_solver", "mumps");
-  ipopt.SetOption("jacobian_approximation", "exact");
-
-  // 3 . solve
-  ipopt.Solve(nlp);
-  Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
-  std::cout << x.transpose() << std::endl;
-
-  // 4. test if solution correct
-  double eps = 1e-5; //double precision
-  assert(1.0-eps < x(0) && x(0) < 1.0+eps);
-  assert(0.0-eps < x(1) && x(1) < 0.0+eps);
+namespace Ipopt {
+class IpoptApplication;
 }
+
+namespace ifopt {
+
+/**
+ * @brief An interface to IPOPT, fully hiding its implementation.
+ *
+ * To set specific options, see:
+ * https://www.coin-or.org/Ipopt/documentation/node40.html
+ *
+ * @ingroup Solvers
+ */
+class IpoptSolver : public Solver {
+public:
+  using Ptr = std::shared_ptr<IpoptSolver>;
+
+  IpoptSolver();
+  virtual ~IpoptSolver() = default;
+
+  /** @brief  Creates an IpoptAdapter and solves the NLP.
+    * @param [in/out]  nlp  The specific problem.
+    */
+  void Solve(Problem& nlp) override;
+
+  /** Options for the IPOPT solver. A complete list can be found here:
+    * https://www.coin-or.org/Ipopt/documentation/node40.html
+    */
+  void SetOption(const std::string& name, const std::string& value);
+  void SetOption(const std::string& name, int value);
+  void SetOption(const std::string& name, double value);
+
+private:
+  std::shared_ptr<Ipopt::IpoptApplication> ipopt_app_;
+};
+
+} /* namespace ifopt */
+
+#endif /* IFOPT_SRC_IFOPT_IPOPT_INCLUDE_IFOPT_IPOPT_H_ */

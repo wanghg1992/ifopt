@@ -24,35 +24,30 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
-#include <iostream>
+#ifndef IFOPT_SRC_IFOPT_SNOPT_INCLUDE_IFOPT_SNOPT_H_
+#define IFOPT_SRC_IFOPT_SNOPT_INCLUDE_IFOPT_SNOPT_H_
 
 #include <ifopt/problem.h>
-#include <ifopt/ipopt_solver.h>
-#include <ifopt/test_vars_constr_cost.h>
+#include <ifopt/solver.h>
 
-using namespace ifopt;
+namespace ifopt {
 
-int main()
-{
-  // 1. define the problem
-  Problem nlp;
-  nlp.AddVariableSet  (std::make_shared<ExVariables>());
-  nlp.AddConstraintSet(std::make_shared<ExConstraint>());
-  nlp.AddCostSet      (std::make_shared<ExCost>());
-  nlp.PrintCurrent();
+/**
+ * @brief An interface to SNOPT, fully hiding its implementation.
+ *
+ * @ingroup Solvers
+ */
+class SnoptSolver : public Solver {
+public:
+  using Ptr = std::shared_ptr<SnoptSolver>;
 
-  // 2. choose solver and options
-  IpoptSolver ipopt;
-  ipopt.SetOption("linear_solver", "mumps");
-  ipopt.SetOption("jacobian_approximation", "exact");
+  /**
+   * @brief Creates a snoptProblemA from @a nlp and solves it.
+   * @param [in/out]  nlp  The specific problem to be used and modified.
+   */
+  void Solve(Problem& nlp) override ;
+};
 
-  // 3 . solve
-  ipopt.Solve(nlp);
-  Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
-  std::cout << x.transpose() << std::endl;
+} /* namespace ifopt */
 
-  // 4. test if solution correct
-  double eps = 1e-5; //double precision
-  assert(1.0-eps < x(0) && x(0) < 1.0+eps);
-  assert(0.0-eps < x(1) && x(1) < 0.0+eps);
-}
+#endif /* IFOPT_SRC_IFOPT_SNOPT_INCLUDE_IFOPT_SNOPT_H_ */

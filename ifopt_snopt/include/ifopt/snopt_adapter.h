@@ -24,8 +24,8 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
-#ifndef IFOPT_INCLUDE_OPT_SNOPT76_ADAPTER_H_
-#define IFOPT_INCLUDE_OPT_SNOPT76_ADAPTER_H_
+#ifndef IFOPT_INCLUDE_OPT_SNOPT_ADAPTER_H_
+#define IFOPT_INCLUDE_OPT_SNOPT_ADAPTER_H_
 
 #include <snoptProblem.hpp>
 
@@ -34,11 +34,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ifopt {
 
 /**
- * @brief Solves the optimization problem with the new SNOPT 7.6 version.
+ * @brief Solves the optimization problem with SNOPT version 7.5 and below.
  *
- * If you have an older of version of SNOPT installed, use snopt_adapter.h.
- *
- * @ingroup solvers
+ * If you have a newer version of SNOPT installed, use snopt_adapter_76.h.
  *
  * Given an optimization Problem with variables, costs and constraints, this
  * class wraps it and makes it conform with the interface defined by SNOPT
@@ -60,27 +58,9 @@ public:
   SnoptAdapter (Problem& nlp);
   virtual ~SnoptAdapter () = default;
 
-  /**
-   * @brief Creates a snoptProblemA from @a nlp and solves it.
-   * @param [in/out]  nlp  The specific problem to be used and modified.
-   */
-  static void Solve(Problem& nlp);
-
-private:
-  /**
-   * @brief  Sets solver settings for Snopt.
-   *
-   * These settings include which QP solver to use, if gradients should
-   * be approximated or the provided analytical ones used, when the iterations
-   * should be terminated,...
-   *
-   * A complete list of options can be found at:
-   * https://web.stanford.edu/group/SOL/guides/sndoc7.pdf
-   */
-  static void SetOptions(SnoptAdapter&);
-
-private:
   void Init();
+  void SetVariables();
+
   static void ObjectiveAndConstraintFct(int   *Status, int *n,    double x[],
                                         int   *needF,  int *neF,  double F[],
                                         int   *needG,  int *neG,  double G[],
@@ -88,15 +68,14 @@ private:
                                         int     iu[],  int *leniu,
                                         double  ru[],  int *lenru);
 
-  void SetVariables();
-
+private:
   static NLPPtr nlp_; // use raw pointer as SnoptAdapter doesn't own the nlp.
 
+// additional variables as Snopt76 base class doesn't have them, not really
+// necessary but to keep the same structure of the original SnoptAdapter
+#ifdef SNOPT76
 
-  // additional variables as Snopt76 base class doesn't have them, not really
-  // necessary but to keep the same structure of the original SnoptAdapter
-protected:
-
+public:
   int     jacComputed = 0;
   int     n = 0;
   int     neF = 0;
@@ -111,9 +90,9 @@ protected:
   int     lenA, lenG, neA, neG;
   int    *iAfun, *jAvar, *iGfun, *jGvar;
   double *A;
-
+#endif
 };
 
 } /* namespace opt */
 
-#endif /* IFOPT_INCLUDE_OPT_SNOPT76_ADAPTER_H_ */
+#endif /* IFOPT_INCLUDE_OPT_SNOPT_ADAPTER_H_ */

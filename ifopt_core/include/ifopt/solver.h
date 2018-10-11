@@ -24,35 +24,39 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
-#include <iostream>
+#ifndef IFOPT_SRC_IFOPT_CORE_INCLUDE_IFOPT_SOLVER_H_
+#define IFOPT_SRC_IFOPT_CORE_INCLUDE_IFOPT_SOLVER_H_
+
+#include <memory>
 
 #include <ifopt/problem.h>
-#include <ifopt/ipopt_solver.h>
-#include <ifopt/test_vars_constr_cost.h>
 
-using namespace ifopt;
+namespace ifopt {
 
-int main()
-{
-  // 1. define the problem
-  Problem nlp;
-  nlp.AddVariableSet  (std::make_shared<ExVariables>());
-  nlp.AddConstraintSet(std::make_shared<ExConstraint>());
-  nlp.AddCostSet      (std::make_shared<ExCost>());
-  nlp.PrintCurrent();
+/**
+ * @defgroup Solvers
+ * @brief Interfaces to IPOPT and SNOPT to solve the optimization problem.
+ *
+ * These are included in the folders: @ref ifopt_ipopt/ and @ref ifopt_snopt/.
+ */
 
-  // 2. choose solver and options
-  IpoptSolver ipopt;
-  ipopt.SetOption("linear_solver", "mumps");
-  ipopt.SetOption("jacobian_approximation", "exact");
+/**
+ * @brief Solver interface implemented by IPOPT and SNOPT.
+ *
+ * @ingroup Solvers
+ */
+class Solver {
+public:
+  using Ptr = std::shared_ptr<Solver>;
 
-  // 3 . solve
-  ipopt.Solve(nlp);
-  Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
-  std::cout << x.transpose() << std::endl;
+  virtual ~Solver () = default;
 
-  // 4. test if solution correct
-  double eps = 1e-5; //double precision
-  assert(1.0-eps < x(0) && x(0) < 1.0+eps);
-  assert(0.0-eps < x(1) && x(1) < 0.0+eps);
-}
+  /** @brief  Uses a specific solver (IPOPT, SNOPT) to solve the NLP.
+    * @param [in/out]  nlp  The nonlinear programming problem.
+    */
+  virtual void Solve(Problem& nlp) = 0;
+};
+
+} /* namespace ifopt */
+
+#endif /* IFOPT_SRC_IFOPT_CORE_INCLUDE_IFOPT_SOLVER_H_ */

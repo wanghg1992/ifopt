@@ -42,6 +42,10 @@ namespace ifopt {
  * @c n rows is given by:
  * lower_bound < g(x) < upper_bound
  *
+ * These constraint sets are later then stitched together to form the overall
+ * problem.
+ *
+ * @ingroup ProblemFormulation
  * @sa Component
  */
 class ConstraintSet : public Component {
@@ -64,7 +68,7 @@ public:
    * The optimization variable values are necessary for calculating constraint
    * violations and Jacobians.
    */
-  virtual void LinkWithVariables(const VariablesPtr& x) final;
+  void LinkWithVariables(const VariablesPtr& x);
 
   /**
    * @brief  The matrix of derivatives for these constraints and variables.
@@ -76,7 +80,7 @@ public:
    * This function only combines the user-defined jacobians from
    * FillJacobianBlock().
    */
-  Jacobian GetJacobian() const override final;
+  Jacobian GetJacobian() const final;
 
 protected:
   /**
@@ -116,7 +120,7 @@ private:
   virtual void InitVariableDependedQuantities(const VariablesPtr& x_init) {};
 
   // doesn't exist for constraints, generated run-time error when used
-  virtual void SetVariables(const VectorXd& x) override final { assert(false); };
+  void SetVariables(const VectorXd& x) final { assert(false); };
 };
 
 

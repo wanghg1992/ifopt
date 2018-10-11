@@ -1,68 +1,75 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(ifopt_core)
-
-add_compile_options(-std=c++11)
-
-find_package(catkin REQUIRED)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(Eigen3 REQUIRED)
-
-
-###################################
-## catkin specific configuration ##
-###################################
-catkin_package(
-  INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR}
-  LIBRARIES    ${PROJECT_NAME}
-)
 
 
 ###########
 ## Build ##
 ###########
-include_directories(
-  include
-  ${EIGEN3_INCLUDE_DIR}
+add_library(${LIB_CORE} SHARED
+    src/problem.cc
+    src/composite.cc
+    src/leaves.cc
 )
-
-add_library(${PROJECT_NAME}
-  src/problem.cc
-  src/composite.cc
-  src/leaves.cc
+target_include_directories(${LIB_CORE} 
+  PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/test>
+    $<INSTALL_INTERFACE:include>
+    ${EIGEN3_INCLUDE_DIR}
 )
-
+# better specify features you need, not c++ version
+target_compile_features(${LIB_CORE} 
+  PUBLIC 
+    cxx_range_for 
+    cxx_auto_type
+)
 
 #############
 ## Install ##
 #############
-# Mark library for installation
+# store in export-set for find-script generation
 install(
-  TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  TARGETS ${LIB_CORE}
+  EXPORT  ${LIB_CORE}-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
-# Mark header files for installation
+# Copy header files to usr/local/include/ifopt/*
 install(
   DIRECTORY include/ifopt/
-  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/ifopt
-  FILES_MATCHING PATTERN "*.h"
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ifopt
+)
+install(
+  FILES test/ifopt/test_vars_constr_cost.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ifopt
+)
+# Generate the find scripts
+install(
+  EXPORT ${LIB_CORE}-targets
+  FILE ${LIB_CORE}-targets.cmake
+  NAMESPACE ifopt::
+  DESTINATION ${config_package_location}
 )
 
 
 #############
 ## Testing ##
 #############
-if (CATKIN_ENABLE_TESTING)
-catkin_add_gtest(${PROJECT_NAME}-test
-                 test/gtest_main.cc
-                 test/composite_test.cc
-                 test/problem_test.cc)
-if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test 
-    ${PROJECT_NAME}
-    pthread
+find_package(GTest QUIET)
+if (TARGET GTest::GTest) # only build when modern target exists
+  add_executable(${LIB_CORE}-test 
+    test/composite_test.cc
+    test/problem_test.cc
+  )  
+  target_link_libraries(${LIB_CORE}-test  
+    PRIVATE 
+      ${LIB_CORE} 
+      GTest::GTest GTest::Main
+  )    
+  add_test(${LIB_CORE}-test  ${LIB_CORE}-test)
+  
+  install(
+    TARGETS ${LIB_CORE}-test
+    RUNTIME DESTINATION ${IFOPT_INSTALL_BINDIR}
   )
 endif()
-endif()
-

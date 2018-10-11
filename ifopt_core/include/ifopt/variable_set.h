@@ -40,6 +40,7 @@ namespace ifopt {
  * This is a single set of variables representing a single concept, e.g
  * "spline coefficients" or "step durations".
  *
+ * @ingroup ProblemFormulation
  * @sa Component
  */
 class VariableSet : public Component {
@@ -53,7 +54,7 @@ public:
   virtual ~VariableSet() = default;
 
   // doesn't exist for variables, generated run-time error when used.
-  virtual Jacobian GetJacobian() const override final
+  Jacobian GetJacobian() const final
   {
     throw std::runtime_error("not implemented for variables");
   };

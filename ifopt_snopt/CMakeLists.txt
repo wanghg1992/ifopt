@@ -1,102 +1,67 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(ifopt_snopt)
-
-add_compile_options(-std=c++11)
-
-find_package(catkin REQUIRED)
-find_package(ifopt_core REQUIRED)
-
-
-################
-## Find SNOPT ##
-################
-# adapt this to point to your installed IPOPT folder
-set(SNOPT_DIR "/home/winklera/3rd_party_software/snopt_lib")
-if(IS_DIRECTORY ${SNOPT_DIR}/include)
-  set(SNOPT_INCLUDE_DIRS ${SNOPT_DIR}/include)
-  find_library(SNOPT_LIB1 snopt7_cpp ${SNOPT_DIR}/lib)
-  find_library(SNOPT_LIB2 snopt7 ${SNOPT_DIR}/lib)
-else()
-  message(WARNING "SNOPT directory \"" ${SNOPT_DIR} "\" NOT found "
-                  "-> Not compiling ifopt_snopt.\n" 
-                  "Specify path to your installed SNOPT installation here.")
-  return()
-endif()
-
-# adapt depending on your SNOPT version
-set(SNOPT76 FALSE)
-if(${SNOPT76})
-  message("SNOPT76 version >= SNOPT 7.6 detected")
-endif()
-
-
-#################################
-## Generate cmake config files ##
-#################################
-# These can then be used to "find_package(ifopt_snopt)"
-catkin_package(
-  INCLUDE_DIRS include ${SNOPT_INCLUDE_DIRS} ${ifopt_core_INCLUDE_DIRS}
-  LIBRARIES    ${PROJECT_NAME}
-)
-
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+find_package(SNOPT REQUIRED)
 
 ###########
 ## Build ##
 ###########
-include_directories(
-  include
-  ${SNOPT_INCLUDE_DIRS}
-  ${ifopt_core_INCLUDE_DIRS}
+set(LIB_SNOPT ifopt_snopt)
+add_library(${LIB_SNOPT} SHARED
+  src/snopt_adapter.cc
+  src/snopt_solver.cc
 )
-
-if(${SNOPT76})
- add_library(${PROJECT_NAME} src/snopt76_adapter.cc)
-else()
- add_library(${PROJECT_NAME} src/snopt_adapter.cc)
+target_include_directories(${LIB_SNOPT} 
+  PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  PRIVATE
+    ${SNOPT_INCLUDE_DIRS}
+)
+target_link_libraries(${LIB_SNOPT} 
+  PUBLIC
+    ${LIB_CORE}
+  PRIVATE  
+    ${SNOPT_LIBRARIES}
+)
+if(${SNOPT_v76})
+  message(STATUS "compiling for snopt version >= 7.6")
+  target_compile_definitions(${LIB_SNOPT} 
+    PRIVATE
+      -DSNOPT76
+  )
 endif()
-
-target_link_libraries(${PROJECT_NAME}
-  ${ifopt_core_LIBRARIES}
-  ${SNOPT_LIB1}
-  ${SNOPT_LIB2}
-)
-
-
-#############
-## Install ##
-#############
-# For this to work, first make sure IPOPT headers and library are installed
-# somewhere in the default search paths.
-# Mark library for installation
-install(
-  TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-# Mark header files for installation
-install(
-  DIRECTORY include/ifopt_snopt/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-)
 
 
 #############
 ## Testing ##
 #############
-if (CATKIN_ENABLE_TESTING)
-catkin_add_gtest(${PROJECT_NAME}-test test/ex_test_snopt.cc)
+add_executable(${LIB_SNOPT}-example test/ex_test_snopt.cc)
+target_link_libraries(${LIB_SNOPT}-example 
+  PRIVATE 
+    ${LIB_SNOPT}
+)
+add_test(${LIB_SNOPT}-example ${LIB_SNOPT}-example)
 
-if(${SNOPT76})
-  target_compile_definitions(${PROJECT_NAME}-test PRIVATE SNOPT76_ON=1)
-endif()
 
-if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test 
-    ${PROJECT_NAME}
-    pthread
-  )
-endif()
-endif()
+#############
+## Install ##
+#############
+ # Copy library files to usr/local/lib/libifopt_snopt.so
+install(
+  TARGETS ${LIB_SNOPT} ${LIB_SNOPT}-example
+  EXPORT ${LIB_SNOPT}-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${IFOPT_INSTALL_BINDIR}
+)
+# Copy header files to usr/local/include/ifopt/*
+install(DIRECTORY include/ifopt/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ifopt
+)
+# Generate the find scripts
+install(EXPORT ${LIB_SNOPT}-targets
+  FILE ${LIB_SNOPT}-targets.cmake
+  NAMESPACE ifopt::
+  DESTINATION ${config_package_location}
+)
+
+
